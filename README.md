@@ -392,23 +392,42 @@ SELECT * FROM active_members;
 Write a query to find the top 3 employees who have processed the most book issues. Display the employee name, number of books processed, and their branch.
 
 ```sql
-SELECT 
-    e.emp_name,
-    b.*,
-    COUNT(ist.issued_id) as no_book_issued
-FROM issued_status as ist
-JOIN
-employees as e
-ON e.emp_id = ist.issued_emp_id
-JOIN
-branch as b
-ON e.branch_id = b.branch_id
-GROUP BY 1, 2
+select
+            e.emp_id,
+            e.emp_name,
+            b.*,
+            count(i.issued_id) as no_of_books_processed
+from issued_status i
+inner join
+employees e 
+on i.issued_emp_id = e.emp_id 
+inner join
+branch b 
+on e.branch_id = b.branch_id 
+group by e.emp_id, b.branch_id
+order by count(i.issued_id) desc
+limit 3;
+
 ```
 
 **Task 18: Identify Members Issuing High-Risk Books**  
 Write a query to identify members who have issued books more than twice with the status "damaged" in the books table. Display the member name, book title, and the number of times they've issued damaged books.    
 
+```sql
+
+select
+            i.issued_member_id,
+            i.issued_book_name,
+            i.issued_book_isbn,
+            count(r.book_quality) as No_of_damaged_books
+from issued_status i
+inner join
+return_status r
+on i.issued_id = r.issued_id 
+where r.book_quality='Damaged'
+group by 1, 2, 3;
+
+```
 
 **Task 19: Stored Procedure**
 Objective:
@@ -478,6 +497,30 @@ WHERE isbn = '978-0-375-41398-8'
 **Task 20: Create Table As Select (CTAS)**
 Objective: Create a CTAS (Create Table As Select) query to identify overdue books and calculate fines.
 
+```sql
+
+drop table if exists overdue_books;
+create table overdue_books as 
+select
+            b.isbn,
+            b.book_title,
+            b.rental_price,
+            i.issued_member_id,
+            i.issued_date,
+            r.return_date,
+            (current_date - i.issued_date) as no_of_days_after_issuing
+from issued_status i 
+inner join
+books b
+on i.issued_book_isbn = b.isbn
+left join
+return_status r
+on r.issued_id = i.issued_id
+where r.return_date is null
+and
+(current_date - i.issued_date) > 30;
+
+```
 Description: Write a CTAS query to create a new table that lists each member and the books they have issued but not returned within 30 days. The table should include:
     The number of overdue books.
     The total fines, with each day's fine calculated at $0.50.
